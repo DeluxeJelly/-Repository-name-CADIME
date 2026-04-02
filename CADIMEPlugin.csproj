@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>CADIMEPlugin</AssemblyName>
+    <RootNamespace>CADIMEPlugin</RootNamespace>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <!-- AutoCAD 引用 -->
+  <ItemGroup Condition="'$(CADPlatform)' == 'AutoCAD'">
+    <Reference Include="acdbmgd">
+      <HintPath>$(ACAD_DIR)\acdbmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(ACAD_DIR)\acmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(ACAD_DIR)\accoremgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- GstarCAD 引用 -->
+  <ItemGroup Condition="'$(CADPlatform)' == 'GstarCAD'">
+    <DefineConstants>$(DefineConstants);GSTAR</DefineConstants>
+    <Reference Include="GrxCAD">
+      <HintPath>$(GSTAR_DIR)\GrxCAD.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="GrxCAD.Base">
+      <HintPath>$(GSTAR_DIR)\GrxCAD.Base.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 通用 Windows 引用 -->
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>
