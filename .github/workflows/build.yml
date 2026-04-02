@@ -3,8 +3,6 @@ name: Build CADIME Plugin
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -12,112 +10,68 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '6.0.x'
+        dotnet-version: '8.0.x'
     
-    - name: Create Project Files
-      shell: pwsh
+    - name: Create project
       run: |
-        New-Item -ItemType Directory -Force -Path src | Out-Null
+        mkdir src
+        cd src
         
-        @'
-        <Project Sdk="Microsoft.NET.Sdk">
-          <PropertyGroup>
-            <TargetFramework>net48</TargetFramework>
-            <AssemblyName>CADIMEPlugin</AssemblyName>
-            <RootNamespace>CADIMEPlugin</RootNamespace>
-            <LangVersion>8.0</LangVersion>
-            <UseWindowsForms>true</UseWindowsForms>
-          </PropertyGroup>
-          <ItemGroup>
-            <Reference Include="System" />
-            <Reference Include="System.Core" />
-            <Reference Include="System.Windows.Forms" />
-          </ItemGroup>
-        </Project>
-        '@ | Set-Content -Path src\CADIMEPlugin.csproj -Encoding UTF8
+        # 创建 csproj
+        echo '<Project Sdk="Microsoft.NET.Sdk">' > CADIMEPlugin.csproj
+        echo '  <PropertyGroup>' >> CADIMEPlugin.csproj
+        echo '    <TargetFramework>net48</TargetFramework>' >> CADIMEPlugin.csproj
+        echo '    <AssemblyName>CADIMEPlugin</AssemblyName>' >> CADIMEPlugin.csproj
+        echo '    <LangVersion>8.0</LangVersion>' >> CADIMEPlugin.csproj
+        echo '    <UseWindowsForms>true</UseWindowsForms>' >> CADIMEPlugin.csproj
+        echo '  </PropertyGroup>' >> CADIMEPlugin.csproj
+        echo '  <ItemGroup>' >> CADIMEPlugin.csproj
+        echo '    <Reference Include="System" />' >> CADIMEPlugin.csproj
+        echo '    <Reference Include="System.Core" />' >> CADIMEPlugin.csproj
+        echo '    <Reference Include="System.Windows.Forms" />' >> CADIMEPlugin.csproj
+        echo '  </ItemGroup>' >> CADIMEPlugin.csproj
+        echo '</Project>' >> CADIMEPlugin.csproj
         
-        @'
-        using System;
-        using System.Runtime.InteropServices;
-        using System.Linq;
-
-        namespace CADIMEPlugin
-        {
-            public class IMESwitcher
-            {
-                [DllImport("imm32.dll")] 
-                static extern IntPtr ImmGetContext(IntPtr hWnd);
-                
-                [DllImport("imm32.dll")] 
-                static extern bool ImmSetConversionStatus(IntPtr himc, int fdwConversion, int fdwSentence);
-                
-                [DllImport("imm32.dll")] 
-                static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr himc);
-                
-                [DllImport("user32.dll")] 
-                static extern IntPtr GetFocus();
-                
-                const int IME_CMODE_ALPHANUMERIC = 0x0000;
-                const int IME_CMODE_NATIVE = 0x0001;
-                
-                static string[] EN_CMDS = { 
-                    "L","LINE","C","CIRCLE","COPY","CO","MOVE","M","OFFSET","O"
-                };
-                
-                static string[] CN_CMDS = { 
-                    "MT","MTEXT","TEXT","DT","T"
-                };
-                
-                public static void SwitchToEnglish()
-                {
-                    try
-                    {
-                        var hwnd = GetFocus();
-                        var himc = ImmGetContext(hwnd);
-                        if (himc != IntPtr.Zero)
-                        {
-                            ImmSetConversionStatus(himc, IME_CMODE_ALPHANUMERIC, 0);
-                            ImmReleaseContext(hwnd, himc);
-                        }
-                    }
-                    catch { }
-                }
-                
-                public static void SwitchToChinese()
-                {
-                    try
-                    {
-                        var hwnd = GetFocus();
-                        var himc = ImmGetContext(hwnd);
-                        if (himc != IntPtr.Zero)
-                        {
-                            ImmSetConversionStatus(himc, IME_CMODE_NATIVE, 0);
-                            ImmReleaseContext(hwnd, himc);
-                        }
-                    }
-                    catch { }
-                }
-            }
-        }
-        '@ | Set-Content -Path src\CADIMEPlugin.cs -Encoding UTF8
-        
-    - name: Build Project
-      shell: pwsh
-      run: |
-        dotnet build src\CADIMEPlugin.csproj -c Release -o output
-        
-        if (Test-Path "output\CADIMEPlugin.dll") {
-            Write-Host "Build successful!" -ForegroundColor Green
-        } else {
-            Write-Host "Build failed!" -ForegroundColor Red
-            exit 1
+        # 创建 C# 文件
+        echo 'using System;' > CADIMEPlugin.cs
+        echo 'using System.Runtime.InteropServices;' >> CADIMEPlugin.cs
+        echo 'using System.Linq;' >> CADIMEPlugin.cs
+        echo '' >> CADIMEPlugin.cs
+        echo 'namespace CADIMEPlugin' >> CADIMEPlugin.cs
+        echo '{' >> CADIMEPlugin.cs
+        echo '    public class IMESwitcher' >> CADIMEPlugin.cs
+        echo '    {' >> CADIMEPlugin.cs
+        echo '        [DllImport("imm32.dll")] static extern IntPtr ImmGetContext(IntPtr hWnd);' >> CADIMEPlugin.cs
+        echo '        [DllImport("imm32.dll")] static extern bool ImmSetConversionStatus(IntPtr himc, int fdwConversion, int fdwSentence);' >> CADIMEPlugin.cs
+        echo '        [DllImport("imm32.dll")] static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr himc);' >> CADIMEPlugin.cs
+        echo '        [DllImport("user32.dll")] static extern IntPtr GetFocus();' >> CADIMEPlugin.cs
+        echo '        const int IME_CMODE_ALPHANUMERIC = 0x0000;' >> CADIMEPlugin.cs
+        echo '        const int IME_CMODE_NATIVE = 0x0001;' >> CADIMEPlugin.cs
+        echo '        static string[] EN_CMDS = { "L","LINE","C","CIRCLE","COPY","CO","MOVE","M","OFFSET","O" };' >> CADIMEPlugin.cs
+        echo '        static string[] CN_CMDS = { "MT","MTEXT","TEXT","DT","T" };' >> CADIMEPlugin.cs
+        echo '        public static void SwitchToEnglish()' >> CADIMEPlugin.cs
+        echo '        {' >> CADIMEPlugin.cs
+        echo '            try { var hwnd = GetFocus(); var himc = ImmGetContext(hwnd); if (himc != IntPtr.Zero) { ImmSetConversionStatus(himc, IME_CMODE_ALPHANUMERIC, 0); ImmReleaseContext(hwnd, himc); } } catch { }' >> CADIMEPlugin.cs
+        echo '        }' >> CADIMEPlugin.cs
+        echo '        public static void SwitchToChinese()' >> CADIMEPlugin.cs
+        echo '        {' >> CADIMEPlugin.cs
+        echo '            try { var hwnd = GetFocus(); var himc = ImmGetContext(hwnd); if (himc != IntPtr.Zero) { ImmSetConversionStatus(himc, IME_CMODE_NATIVE, 0); ImmReleaseContext(hwnd, himc); } } catch { }' >> CADIMEPlugin.cs
+        echo '        }' >> CADIMEPlugin.cs
+        echo '    }' >> CADIMEPlugin.cs
+        echo '}' >> CADIMEPlugin.cs
     
-    - name: Upload Artifact
+    - name: Build
+      run: |
+        cd src
+        dotnet build CADIMEPlugin.csproj -c Release -o ../output
+    
+    - name: Upload DLL
       uses: actions/upload-artifact@v4
       with:
         name: CADIMEPlugin
