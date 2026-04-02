@@ -19,13 +19,12 @@ jobs:
       with:
         dotnet-version: '6.0.x'
     
-    - name: Build Generic Version
+    - name: Create Project Files
+      shell: pwsh
       run: |
-        # 创建简化版本（不依赖特定 CAD 的 API）
-        mkdir -p src
+        New-Item -ItemType Directory -Force -Path src | Out-Null
         
-        # 创建项目文件
-        @"
+        @'
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <TargetFramework>net48</TargetFramework>
@@ -40,19 +39,16 @@ jobs:
             <Reference Include="System.Windows.Forms" />
           </ItemGroup>
         </Project>
-        "@ | Out-File -FilePath "src\CADIMEPlugin.csproj" -Encoding UTF8
+        '@ | Set-Content -Path src\CADIMEPlugin.csproj -Encoding UTF8
         
-        # 创建源代码
-        @"
+        @'
         using System;
         using System.Runtime.InteropServices;
         using System.Linq;
-        using System.Windows.Forms;
 
-        // 使用动态加载兼容多个 CAD 平台
         namespace CADIMEPlugin
         {
-            public class PluginLoader
+            public class IMESwitcher
             {
                 [DllImport("imm32.dll")] 
                 static extern IntPtr ImmGetContext(IntPtr hWnd);
@@ -70,21 +66,11 @@ jobs:
                 const int IME_CMODE_NATIVE = 0x0001;
                 
                 static string[] EN_CMDS = { 
-                    "L","LINE","C","CIRCLE","REC","RECTANG","PL","PLINE","ARC","POL","POLYGON",
-                    "EL","ELLIPSE","SPL","SPLINE","PO","POINT","H","HATCH",
-                    "CO","COPY","MI","MIRROR","AR","ARRAY","O","OFFSET","RO","ROTATE",
-                    "M","MOVE","E","ERASE","EX","EXTEND","TR","TRIM","F","FILLET",
-                    "CHA","CHAMFER","SC","SCALE","S","STRETCH","X","EXPLODE","J","JOIN",
-                    "Z","ZOOM","P","PAN","REGEN","REDRAW",
-                    "LA","LAYER","MA","MATCHPROP","COL","COLOR","LW","LWEIGHT",
-                    "B","BLOCK","I","INSERT","W","WBLOCK",
-                    "DLI","DAL","DRA","DDI","DAN","DCO","QDIM",
-                    "DI","DIST","AREA","LIST","ID"
+                    "L","LINE","C","CIRCLE","COPY","CO","MOVE","M","OFFSET","O"
                 };
                 
                 static string[] CN_CMDS = { 
-                    "MT","MTEXT","TEXT","DT","T","MTEDIT","TE","FIELD",
-                    "TABLE","TB","TABLEDIT","MLEADER","MLD","MLEADEREDIT"
+                    "MT","MTEXT","TEXT","DT","T"
                 };
                 
                 public static void SwitchToEnglish()
@@ -116,78 +102,23 @@ jobs:
                     }
                     catch { }
                 }
-                
-                public static void OnCommand(string cmd)
-                {
-                    if (string.IsNullOrEmpty(cmd)) return;
-                    cmd = cmd.ToUpper().Trim();
-                    
-                    if (EN_CMDS.Contains(cmd))
-                    {
-                        SwitchToEnglish();
-                        System.Diagnostics.Debug.WriteLine($"[CADIME] {cmd} -> English");
-                    }
-                    else if (CN_CMDS.Contains(cmd))
-                    {
-                        SwitchToChinese();
-                        System.Diagnostics.Debug.WriteLine($"[CADIME] {cmd} -> Chinese");
-                    }
-                }
-            }
-            
-            // 简单的命令行工具版本
-            public class Program
-            {
-                [STAThread]
-                public static void Main(string[] args)
-                {
-                    if (args.Length > 0)
-                    {
-                        PluginLoader.OnCommand(args[0]);
-                    }
-                    else
-                    {
-                        // 测试模式
-                        Console.WriteLine("CADIME Test Mode");
-                        Console.WriteLine("Commands: LINE -> English, MTEXT -> Chinese");
-                        
-                        while (true)
-                        {
-                            Console.Write("Enter command: ");
-                            var cmd = Console.ReadLine();
-                            if (cmd == "exit") break;
-                            
-                            PluginLoader.OnCommand(cmd);
-                        }
-                    }
-                }
             }
         }
-        "@ | Out-File -FilePath "src\CADIMEPlugin.cs" -Encoding UTF8
+        '@ | Set-Content -Path src\CADIMEPlugin.cs -Encoding UTF8
         
-        # 编译
+    - name: Build Project
+      shell: pwsh
+      run: |
         dotnet build src\CADIMEPlugin.csproj -c Release -o output
         
-        # 检查输出
         if (Test-Path "output\CADIMEPlugin.dll") {
             Write-Host "Build successful!" -ForegroundColor Green
-            Get-ChildItem output\*.dll
-        }
+        } else {
+            Write-Host "Build failed!" -ForegroundColor Red
+            exit 1
     
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: CADIMEPlugin
         path: output/*.dll
-        
-    - name: Create Release
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ github.run_number }}
-        name: CADIME Plugin v${{ github.run_number }}
-        files: output/*.dll
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
